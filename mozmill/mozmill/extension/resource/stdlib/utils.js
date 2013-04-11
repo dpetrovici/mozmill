@@ -5,7 +5,7 @@
 var EXPORTED_SYMBOLS = ["Copy", "getChromeWindow", "getWindows",
                         "getWindowByTitle", "getWindowByType", "getWindowId",
                         "getMethodInWindows", "getPreference", "setPreference",
-                        "sleep", "assert", "unwrapNode", "TimeoutError", "waitFor",
+                        "sleep", "assert", "unwrapNode", "TimeoutError",
                         "saveDataURL", "takeScreenshot", "startTimer", "stopTimer",
                        ];
 
@@ -21,6 +21,8 @@ var hwindow = Cc["@mozilla.org/appshell/appShellService;1"]
               .getService(Ci.nsIAppShellService).hiddenDOMWindow;
 
 var uuidgen = Cc["@mozilla.org/uuid-generator;1"].getService(Ci.nsIUUIDGenerator);
+
+var { assert } = require("../modules/assertions");
 
 function Copy (obj) {
   for (var n in obj) {
@@ -254,49 +256,6 @@ TimeoutError.prototype.constructor = TimeoutError;
 TimeoutError.prototype.name = 'TimeoutError';
 
 /**
- * Waits for the callback evaluates to true
- */
-function waitFor(callback, message, timeout, interval, thisObject) {
-  timeout = timeout || 5000;
-  interval = interval || 100;
-
-  var self = {
-    timeIsUp: false,
-    result: callback.call(thisObject)
-  };
-  var deadline = Date.now() + timeout;
-
-  function wait() {
-    if (self.result !== true) {
-      self.result = callback.call(thisObject);
-      self.timeIsUp = Date.now() > deadline;
-    }
-  }
-
-  var timeoutInterval = hwindow.setInterval(wait, interval);
-  var thread = Cc["@mozilla.org/thread-manager;1"]
-               .getService().currentThread;
-
-  while (self.result !== true && !self.timeIsUp) {
-    thread.processNextEvent(true);
-
-    let type = typeof(self.result);
-    if (type !== 'boolean')
-      throw TypeError("waitFor() callback has to return a boolean" +
-                      " instead of '" + type + "'");
-  }
-
-  hwindow.clearInterval(timeoutInterval);
-
-  if (self.result !== true && self.timeIsUp) {
-    message = message || arguments.callee.name + ": Timeout exceeded for '" + callback + "'";
-    throw new TimeoutError(message);
-  }
-
-  return true;
-}
-
-/**
  * Calculates the x and y chrome offset for an element
  * See https://developer.mozilla.org/en/DOM/window.innerHeight
  * 
@@ -451,7 +410,7 @@ function saveDataURL(aDataURL, aFilename) {
     }
   });
 
-  waitFor(function () {
+  assert.waitFor(function () {
     return ready;
   }, "Saving dataURL to '" + file.path + "' has been timed out.");
 

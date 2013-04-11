@@ -510,6 +510,30 @@ Expect.prototype = {
 
     return this._test(condition, aMessage, diagnosis);
   }
+
+  /**
+   * Waits for the callback evaluates to true
+   *
+   * @param {Function} aCallback Callback for evaluation
+   * @param {String} aMessage Message to show for result
+   * @param {Number} aTimeout Timeout in waiting for evaluation
+   * @param {Number} aInterval Interval between evaluation attempts
+   * @param {Object} aThisObject this object
+   */
+  Expect.prototype.waitFor = function Expect_waitFor(aCallback, aMessage, aTimeout,
+                                                     aInterval, aThisObject) {
+    let condition = true;
+    let message = aMessage;
+
+    try {
+      waitFor(aCallback, aMessage, aTimeout, aInterval, aThisObject);
+    } catch (ex) {
+      message = ex.message;
+      condition = false;
+    }
+
+    return this._test(condition, message);
+  }
 }
 
 /**
@@ -572,6 +596,62 @@ Assert.prototype._logFail = function Assert__logFail(aResult) {
                            aResult.name);
 }
 
+/**
+ * Waits for the callback evaluates to true
+ *
+ * @param {Function} aCallback Callback for evaluation
+ * @param {String} aMessage Message to show for result
+ * @param {Number} aTimeout Timeout in waiting for evaluation
+ * @param {Number} aInterval Interval between evaluation attempts
+ * @param {Object} aThisObject this object
+ */
+Assert.prototype.waitFor = function Assert_waitFor(aCallback, aMessage, aTimeout,
+                                                   aInterval, aThisObject) {
+  return waitFor(aCallback, aMessage, aTimeout, aInterval, aThisObject);
+}
+
+/**
+ * Waits for the callback evaluates to true
+ */
+function waitFor(callback, message, timeout, interval, thisObject) {
+  timeout = timeout || 5000;
+  interval = interval || 100;
+
+  var self = {
+    timeIsUp: false,
+    result: callback.call(thisObject)
+  };
+  var deadline = Date.now() + timeout;
+
+  function wait() {
+    if (self.result !== true) {
+      self.result = callback.call(thisObject);
+      self.timeIsUp = Date.now() > deadline;
+    }
+  }
+
+  var timeoutInterval = hwindow.setInterval(wait, interval);
+  var thread = Cc["@mozilla.org/thread-manager;1"]
+               .getService().currentThread;
+
+  while (self.result !== true && !self.timeIsUp) {
+    thread.processNextEvent(true);
+
+    let type = typeof(self.result);
+    if (type !== 'boolean')
+      throw TypeError("waitFor() callback has to return a boolean" +
+                      " instead of '" + type + "'");
+  }
+
+  hwindow.clearInterval(timeoutInterval);
+
+  if (self.result !== true && self.timeIsUp) {
+    message = message || arguments.callee.name + ": Timeout exceeded for '" + callback + "'";
+    throw new TimeoutError(message);
+  }
+
+  return true;
+}
 
 // Export of variables
 assertions.Expect = Expect;
