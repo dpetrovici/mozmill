@@ -6,6 +6,7 @@
 var mozmillFrame = {};
 Cu.import('resource://mozmill/modules/frame.js', mozmillFrame);
 
+var utils = {}; Cu.import('resource://mozmill/stdlib/utils.js', utils);
 var stack = require('stack');
 
 /**
@@ -509,6 +510,29 @@ Expect.prototype = {
     let diagnosis = "'" + aString + "' should not contain '" + aPattern + "'";
 
     return this._test(condition, aMessage, diagnosis);
+  },
+
+  /**
+   * Waits for the callback evaluates to true
+   *
+   * @param {Function} aCallback Callback for evaluation
+   * @param {String} aMessage Message to show for result
+   * @param {Number} aTimeout Timeout in waiting for evaluation
+   * @param {Number} aInterval Interval between evaluation attempts
+   * @param {Object} aThisObject this object
+   */
+  waitFor: function Expect_waitFor(aCallback, aMessage, aTimeout, aInterval, aThisObject) {
+    let condition = true;
+    let message = aMessage;
+
+    try {
+      utils.waitFor(aCallback, aMessage, aTimeout, aInterval, aThisObject);
+    } catch (ex) {
+      message = ex.message;
+      condition = false;
+    }
+
+    return this._test(condition, message);
   }
 }
 
@@ -570,6 +594,20 @@ Assert.prototype._logFail = function Assert__logFail(aResult) {
                            aResult.fileName,
                            aResult.lineNumber,
                            aResult.name);
+}
+
+/**
+ * Waits for the callback evaluates to true
+ *
+ * @param {Function} aCallback Callback for evaluation
+ * @param {String} aMessage Message to show for result
+ * @param {Number} aTimeout Timeout in waiting for evaluation
+ * @param {Number} aInterval Interval between evaluation attempts
+ * @param {Object} aThisObject this object
+ */
+Assert.prototype.waitFor = function Assert_waitFor(aCallback, aMessage, aTimeout,
+                                                   aInterval, aThisObject) {
+  return utils.waitFor(aCallback, aMessage, aTimeout, aInterval, aThisObject);
 }
 
 
