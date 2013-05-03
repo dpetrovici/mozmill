@@ -70,7 +70,12 @@ var Name = function (document, nName) {
 };
 
 var Lookup = function (document, expression) {
-  return createInstance("Lookup", expression, elementslib.Lookup(document, expression), document);
+  var elem = createInstance("Lookup", expression, elementslib.Lookup(document, expression), document);
+
+  // Used to maintain backwards compatibility
+  elem.expression = elem._locator;
+
+  return elem;
 };
 
 /**
